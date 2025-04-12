@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Markdown | bontal.net</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --accent-color: #2a7d98;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --nav-height: 60px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .nav-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--nav-height);
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 0 2rem;
+            z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-color);
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        header {
+            padding: calc(2rem + var(--nav-height)) 2rem 2rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .tagline {
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 1rem;
+        }
+
+        .converter-card {
+            width: 100%;
+            max-width: 768px;
+            border-radius: 12px;
+            background-color: rgba(20, 20, 20, 0.5);
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            box-shadow: 0 4px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .drop-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem 1.5rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 100%;
+            background-color: rgba(30, 30, 30, 0.5);
+        }
+
+        .drop-area:hover,
+        .drop-area.drag-over {
+            border-color: var(--accent-color);
+            background-color: rgba(42, 125, 152, 0.1);
+        }
+
+        .drop-area-content {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .icon {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        .drop-text {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-name {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            word-break: break-all;
+            margin-top: 0.5rem;
+            display: none;
+            padding-left: 2rem;
+        }
+
+        .settings-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            cursor: pointer;
+            user-select: none;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .settings-toggle:hover {
+            color: var(--text-color);
+        }
+
+        .settings-icon {
+            margin-right: 0.5rem;
+        }
+
+        .settings-panel {
+            display: none;
+            background-color: rgba(30, 30, 30, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+            margin-right: 0.75rem;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .3s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--accent-color);
+        }
+
+        input:focus+.slider {
+            box-shadow: 0 0 1px var(--accent-color);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(16px);
+        }
+
+        .setting-label {
+            font-size: 0.875rem;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            font-size: 0.9375rem;
+            white-space: nowrap;
+        }
+
+        .button-primary {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .button-primary:hover {
+            background-color: #39a5c6;
+        }
+
+        .button-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button-secondary {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .button-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .result-actions {
+            display: none;
+            gap: 0.75rem;
+        }
+
+        .status {
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .spinner {
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: var(--text-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .success {
+            color: var(--success-color);
+        }
+
+        .error {
+            color: var(--error-color);
+        }
+
+        .cached {
+            color: var(--accent-color);
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: var(--nav-height);
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                background-color: rgba(0, 0, 0, 0.95);
+                padding: 1rem;
+                gap: 1rem;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .nav-links.active {
+                display: flex;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .drop-area {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1.5rem;
+            }
+
+            .drop-area-content {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .result-actions {
+                flex-direction: column;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .converter-card {
+                max-width: 90%;
+            }
+        }
+
+        @media (min-width: 1025px) {
+            .converter-card {
+                max-width: 768px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="nav-container">
+        <button class="mobile-menu-toggle" id="mobile-menu-toggle">☰</button>
+        <div class="nav-links" id="nav-links">
+            <a href="https://bontal.net?utm_source=pdf2md&utm_medium=tool&utm_campaign=converter" class="nav-link"
+                target="_blank">Home</a>
+            <a href="https://blog.bontal.net?utm_source=pdf2md&utm_medium=tool&utm_campaign=converter" class="nav-link"
+                target="_blank">Blog</a>
+            <a href="https://portfolio.bontal.net?utm_source=pdf2md&utm_medium=tool&utm_campaign=converter"
+                class="nav-link" target="_blank">Portfolio</a>
+            <a href="https://github.com/pewriebontal?utm_source=pdf2md&utm_medium=tool&utm_campaign=converter"
+                class="nav-link" target="_blank">GitHub</a>
+        </div>
+    </nav>
+
+    <header>
+        <h1>PDF to Markdown</h1>
+        <p class="tagline">Simple conversion tool</p>
+    </header>
+
+    <main>
+        <div class="converter-card">
+            <div class="drop-area" id="drop-area">
+                <div class="drop-area-content">
+                    <div class="icon">📄</div>
+                    <p class="drop-text">Drag & drop your PDF file here</p>
+                </div>
+                <button class="button button-secondary" id="select-file">Select File</button>
+                <input type="file" class="file-input" id="file-input" accept=".pdf">
+                <p class="file-name" id="file-name"></p>
+            </div>
+
+            <div class="settings-toggle" id="settings-toggle">
+                <span class="settings-icon">⚙️</span>
+                <span>Conversion Settings</span>
+            </div>
+
+            <div class="settings-panel" id="settings-panel">
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="use-llm">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="setting-label">Use LLM for enhanced quality</span>
+                    </div>
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="paginate">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="setting-label">Paginate output</span>
+                    </div>
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="extract-images" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="setting-label">Extract images</span>
+                    </div>
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="force-ocr">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="setting-label">Force OCR processing</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="button button-primary" id="convert-btn" disabled>Convert to Markdown</button>
+                <div class="result-actions" id="result-actions">
+                    <button class="button button-secondary" id="copy-btn">Copy to Clipboard</button>
+                    <button class="button button-secondary" id="download-btn">Download Markdown</button>
+                </div>
+            </div>
+
+            <div class="status" id="status-loading">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <span>Converting your PDF...</span>
+                </div>
+            </div>
+
+            <div class="status success" id="status-success">
+                <span>Conversion complete! Your markdown is ready.</span>
+            </div>
+
+            <div class="status cached" id="status-cached">
+                <span>✨ Retrieved from cache for instant results!</span>
+            </div>
+
+            <div class="status error" id="status-error">
+                <span id="error-message">An error occurred during conversion.</span>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2025 Pewrie Bontal. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Elements
+            const dropArea = document.getElementById('drop-area');
+            const fileInput = document.getElementById('file-input');
+            const selectFileBtn = document.getElementById('select-file');
+            const fileName = document.getElementById('file-name');
+            const settingsToggle = document.getElementById('settings-toggle');
+            const settingsPanel = document.getElementById('settings-panel');
+            const convertBtn = document.getElementById('convert-btn');
+            const resultActions = document.getElementById('result-actions');
+            const copyBtn = document.getElementById('copy-btn');
+            const downloadBtn = document.getElementById('download-btn');
+
+            // Status elements
+            const statusLoading = document.getElementById('status-loading');
+            const statusSuccess = document.getElementById('status-success');
+            const statusCached = document.getElementById('status-cached');
+            const statusError = document.getElementById('status-error');
+            const errorMessage = document.getElementById('error-message');
+
+            // Navigation elements
+            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+            const navLinks = document.getElementById('nav-links');
+
+            // Mobile menu toggle
+            mobileMenuToggle.addEventListener('click', () => {
+                navLinks.classList.toggle('active');
+            });
+
+            // Settings
+            const useLlm = document.getElementById('use-llm');
+            const paginate = document.getElementById('paginate');
+            const extractImages = document.getElementById('extract-images');
+            const forceOcr = document.getElementById('force-ocr');
+
+            // Variables
+            let markdownContent = '';
+
+            // Functions
+            function resetStatus() {
+                statusLoading.style.display = 'none';
+                statusSuccess.style.display = 'none';
+                statusCached.style.display = 'none';
+                statusError.style.display = 'none';
+            }
+
+            function handleFiles(files) {
+                if (files.length > 0 && files[0].type === 'application/pdf') {
+                    fileName.textContent = 'Selected: ' + files[0].name;
+                    fileName.style.display = 'block';
+                    convertBtn.disabled = false;
+                } else if (files.length > 0) {
+                    errorMessage.textContent = 'Please select a PDF file.';
+                    statusError.style.display = 'block';
+                }
+            }
+
+            // Event Listeners
+            selectFileBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', () => {
+                resetStatus();
+                handleFiles(fileInput.files);
+            });
+
+            settingsToggle.addEventListener('click', () => {
+                if (settingsPanel.style.display === 'block') {
+                    settingsPanel.style.display = 'none';
+                } else {
+                    settingsPanel.style.display = 'block';
+                }
+            });
+
+            // Drag and drop
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => {
+                    dropArea.classList.add('drag-over');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => {
+                    dropArea.classList.remove('drag-over');
+                }, false);
+            });
+
+            dropArea.addEventListener('drop', (e) => {
+                resetStatus();
+                const files = e.dataTransfer.files;
+                fileInput.files = files;
+                handleFiles(files);
+            });
+
+            // Convert button
+            convertBtn.addEventListener('click', async () => {
+                if (!fileInput.files.length) {
+                    return;
+                }
+
+                resetStatus();
+                statusLoading.style.display = 'block';
+                resultActions.style.display = 'none';
+
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                formData.append('use_llm', useLlm.checked);
+                formData.append('paginate_output', paginate.checked);
+                formData.append('extract_images', extractImages.checked);
+                formData.append('force_ocr', forceOcr.checked);
+
+                try {
+                    const response = await fetch('/convert', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        markdownContent = result.markdown;
+
+                        // Show appropriate status
+                        if (result.cached) {
+                            statusCached.style.display = 'block';
+                        } else {
+                            statusSuccess.style.display = 'block';
+                        }
+
+                        // Show result actions
+                        resultActions.style.display = 'flex';
+                    } else {
+                        errorMessage.textContent = result.error || 'An error occurred during conversion.';
+                        statusError.style.display = 'block';
+                    }
+                } catch (error) {
+                    errorMessage.textContent = error.message || 'Failed to convert the PDF.';
+                    statusError.style.display = 'block';
+                } finally {
+                    statusLoading.style.display = 'none';
+                }
+            });
+
+            // Copy button
+            copyBtn.addEventListener('click', () => {
+                if (!markdownContent) return;
+
+                navigator.clipboard.writeText(markdownContent)
+                    .then(() => {
+                        const originalText = copyBtn.textContent;
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyBtn.textContent = originalText;
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy: ', err);
+                    });
+            });
+
+            // Download button
+            downloadBtn.addEventListener('click', () => {
+                if (!markdownContent || !fileInput.files.length) return;
+
+                const blob = new Blob([markdownContent], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+
+                a.href = url;
+                a.download = fileInput.files[0].name.replace('.pdf', '.md');
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 0);
+            });
+        });
+    </script>
+</body>
+
+</html>
