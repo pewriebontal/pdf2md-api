@@ -1,35 +1,47 @@
+import logging.config
 import os
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 
 from .api.endpoints import router
 from .core.config import settings
-from .core.logging import setup_logging
-from .db.base import engine
-from .db import models
+from .db.base import init_db
 
-# Create required directories
-static_dir = os.path.join(os.path.dirname(__file__), "static")
-templates_dir = os.path.join(os.path.dirname(__file__), "templates")
-os.makedirs(static_dir, exist_ok=True)
-os.makedirs(templates_dir, exist_ok=True)
+logger = logging.getLogger("pdf2md.main")
 
-# Create database tables
-models.Base.metadata.create_all(bind=engine)
+if hasattr(settings, "LOGGING_CONFIG"):
+    logging.config.dictConfig(settings.LOGGING_CONFIG)
+else:
+    logging.basicConfig(level=logging.INFO)
+    logger.warning("LOGGING_CONFIG not found in settings. Using basic logging.")
 
-# Set up logging
-logger = setup_logging()
 
-# Initialize FastAPI app
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting PDF to Markdown API")
+    logger.info(
+        f"LLM enhancement feature is {'AVAILABLE' if settings.llm_available else 'NOT AVAILABLE - API keys not configured'}"
+    )
+    logger.info(f"Using TORCH_DEVICE: {settings.TORCH_DEVICE}")
+    logger.info(f"Maximum upload size: {settings.MAX_UPLOAD_SIZE}MB")
+    init_db()
+    Path(settings.STORAGE_PATH).mkdir(parents=True, exist_ok=True)
+    Path(settings.TEMP_PATH).mkdir(parents=True, exist_ok=True)
+    Path(settings.UPLOAD_PATH).mkdir(parents=True, exist_ok=True)
+    yield
+    logger.info("Shutting down API")
+
+
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description="API for converting PDF documents to Markdown format using Marker",
+    title="PDF to Markdown API",
+    description="Convert PDF documents to Markdown using Marker.",
     version=settings.API_VERSION,
+    lifespan=lifespan,
 )
 
-# Configure CORS
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
@@ -39,35 +51,14 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-# Mount static files directory relative to the app directory
-static_dir = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-# Include API router
 app.include_router(router)
 
-# App startup event
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Starting PDF to Markdown API")
-    
-    if settings.llm_available:
-        logger.info("LLM enhancement feature is AVAILABLE")
-        
-        available_services = []
-        if os.environ.get("GOOGLE_API_KEY"):
-            available_services.append("Google Gemini")
-        if os.environ.get("OPENAI_API_KEY"):
-            available_services.append("OpenAI")
-        if os.environ.get("CLAUDE_API_KEY"):
-            available_services.append("Claude")
-        if os.environ.get("VERTEX_PROJECT_ID"):
-            available_services.append("Vertex AI")
-            
-        logger.info(f"Available LLM services: {', '.join(available_services)}")
-    else:
-        logger.info("LLM enhancement feature is NOT AVAILABLE - API keys not configured")
-    
-    logger.info(f"Using TORCH_DEVICE: {settings.TORCH_DEVICE}")
-    
-    logger.info(f"Maximum upload size: {settings.MAX_UPLOAD_SIZE}MB")
+
+static_dir = Path(settings.UPLOAD_PATH)
+if static_dir.is_dir():
+    app.mount("/uploads", StaticFiles(directory=static_dir), name="uploads")
+    logger.info(f"Mounted static files directory: {static_dir} at /uploads")
+else:
+    logger.warning(
+        f"Static files directory {static_dir} not found. Images may not be served."
+    )

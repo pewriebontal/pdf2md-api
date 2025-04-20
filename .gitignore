@@ -61,3 +61,6 @@ parts/
 sdist/
 var/
 wheels/
+
+# Redis
+dump.rdb

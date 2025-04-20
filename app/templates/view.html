@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Conversion: {{ filename }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color-start: #111827;
+
+            --bg-color-end: #0f172a;
+
+            --card-bg: #1f2937;
+
+            --text-color: #e5e7eb;
+
+            --text-secondary: #9ca3af;
+
+            --accent-color: #3b82f6;
+
+            --border-color: #374151;
+
+            --code-bg: #111827;
+
+            --code-text: #d1d5db;
+
+            --border-radius: 8px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-color-start), var(--bg-color-end));
+            color: var(--text-color);
+            line-height: 1.7;
+
+            padding: 2rem;
+            max-width: 850px;
+
+            margin: 2rem auto;
+            font-size: 16px;
+        }
+
+
+        .back-link {
+            display: inline-flex;
+
+            align-items: center;
+            margin-bottom: 2.5rem;
+
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--text-color);
+        }
+
+        .back-link::before {
+
+            content: '←';
+            margin-right: 0.5em;
+            font-weight: bold;
+        }
+
+
+        h1.main-title {
+
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            font-weight: 700;
+            color: #f9fafb;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            letter-spacing: -0.02em;
+        }
+
+
+        .content-container {
+            background-color: var(--card-bg);
+
+            padding: 2rem;
+
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+
+        .content-container h1,
+        .content-container h2,
+        .content-container h3,
+        .content-container h4,
+        .content-container h5,
+        .content-container h6 {
+            color: #f3f4f6;
+
+            margin-top: 1.8em;
+            margin-bottom: 0.8em;
+            line-height: 1.4;
+            font-weight: 600;
+        }
+
+        .content-container h1 {
+            font-size: 1.8em;
+            padding-bottom: 0.3em;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .content-container h2 {
+            font-size: 1.5em;
+            padding-bottom: 0.3em;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .content-container h3 {
+            font-size: 1.25em;
+        }
+
+        .content-container h4 {
+            font-size: 1.1em;
+            color: var(--text-secondary);
+        }
+
+        .content-container h5 {
+            font-size: 1em;
+            color: var(--text-secondary);
+        }
+
+        .content-container h6 {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .content-container p {
+            margin-bottom: 1.2em;
+        }
+
+
+
+        .content-container a {
+            color: var(--accent-color);
+            text-decoration: none;
+            transition: color 0.2s, border-bottom 0.2s;
+            border-bottom: 1px solid transparent;
+        }
+
+        .content-container a:hover {
+            color: #60a5fa;
+
+            border-bottom: 1px solid #60a5fa;
+        }
+
+
+        .content-container code {
+            background-color: rgba(55, 65, 81, 0.5);
+
+            padding: 0.25em 0.5em;
+            border-radius: 4px;
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+            color: var(--code-text);
+            border: 1px solid var(--border-color);
+        }
+
+
+        .content-container pre {
+            background-color: var(--code-bg);
+            padding: 1.25em;
+
+            border-radius: var(--border-radius);
+            overflow-x: auto;
+            margin: 1.5em 0;
+
+            border: 1px solid var(--border-color);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .content-container pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+            font-size: 0.9em;
+            border: none;
+
+            box-shadow: none;
+        }
+
+
+        .content-container blockquote {
+            border-left: 4px solid var(--accent-color);
+
+            padding: 0.5em 1.5em;
+
+            margin: 1.5em 0;
+
+            color: var(--text-secondary);
+            background-color: rgba(31, 41, 55, 0.3);
+
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        }
+
+        .content-container blockquote p {
+            margin-bottom: 0.5em;
+
+        }
+
+
+        .content-container ul,
+        .content-container ol {
+            margin: 1em 0 1.5em 0;
+
+            padding-left: 1.8em;
+
+        }
+
+        .content-container li {
+            margin-bottom: 0.6em;
+        }
+
+        .content-container ul li::marker {
+            color: var(--accent-color);
+        }
+
+
+
+
+        .content-container table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1.5em 0;
+
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .content-container th,
+        .content-container td {
+            border: 1px solid var(--border-color);
+            padding: 0.75em 1em;
+
+            text-align: left;
+        }
+
+        .content-container th {
+            background-color: rgba(55, 65, 81, 0.5);
+
+            font-weight: 600;
+            color: #f3f4f6;
+        }
+
+        .content-container tr:nth-child(even) {
+            background-color: rgba(31, 41, 55, 0.2);
+
+        }
+
+
+        .content-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--border-radius);
+            margin: 1.5em auto;
+
+            display: block;
+
+            background-color: #fff;
+
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+
+        .content-container hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 2.5em 0;
+
+        }
+
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+                font-size: 15px;
+            }
+
+            .content-container {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <a href="/" class="back-link">Back to Converter</a>
+    <h1 class="main-title">{{ filename }}</h1> <!-- Added class -->
+    <div class="content-container"> <!-- Added container div -->
+        {{ content | safe }}
+    </div>
+</body>
+
+</html>
