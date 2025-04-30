@@ -1,0 +1,88 @@
+services:
+  - type: web
+    name: pdf2md-web
+    env: python
+    plan: free # Free plan selected
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11 # Adjust based on your Python version
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: redis-broker
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: redis-backend
+          property: connectionString
+      # NOTE: Using default in-memory/temporary storage paths as disk is removed
+      - key: DATABASE_URL
+        value: sqlite:///pdf2md.db # Store DB in ephemeral filesystem
+      - key: STORAGE_PATH
+        value: ./storage # Use relative path in ephemeral filesystem
+      - key: TEMP_PATH
+        value: ./storage/temp
+      - key: UPLOAD_PATH
+        value: ./storage/uploads
+      # Add other necessary environment variables from your .env (e.g., LLM keys)
+      # - key: OPENAI_API_KEY
+      #   sync: false # Keep secrets out of the yaml if preferred
+    # disk: # Removed disk configuration for free tier compatibility
+    #   name: data-disk
+    #   mountPath: /var/data
+    #   sizeGB: 1
+
+  - type: worker
+    name: pdf2md-worker
+    env: python
+    plan: free # Free plan selected
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: celery -A app.celery_app worker --loglevel=info --pool=solo
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11 # Adjust based on your Python version
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: redis-broker
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: redis-backend
+          property: connectionString
+      # NOTE: Using default in-memory/temporary storage paths as disk is removed
+      - key: DATABASE_URL
+        value: sqlite:///pdf2md.db # Store DB in ephemeral filesystem
+      - key: STORAGE_PATH
+        value: ./storage # Use relative path in ephemeral filesystem
+      - key: TEMP_PATH
+        value: ./storage/temp
+      - key: UPLOAD_PATH
+        value: ./storage/uploads
+      # Add other necessary environment variables from your .env (e.g., LLM keys)
+      # - key: OPENAI_API_KEY
+      #   sync: false
+    # disk: # Removed disk configuration for free tier compatibility
+    #   name: data-disk
+    #   mountPath: /var/data
+
+  - type: redis
+    name: redis-broker
+    plan: free
+    ipAllowList: [] # Allows connections from services in your Render account
+
+  - type: redis
+    name: redis-backend
+    plan: free
+    ipAllowList: [] # Allows connections from services in your Render account
+
+# Optional: Add a managed PostgreSQL database if not using SQLite
+# databases:
+#   - name: pdf2md-db
+#     plan: free # Render offers a free Postgres plan
+#     databaseName: pdf2md_db # Optional: specify DB name
+#     user: pdf2md_user # Optional: specify user
