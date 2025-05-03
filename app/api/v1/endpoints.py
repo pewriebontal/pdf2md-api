@@ -24,27 +24,33 @@ from celery.result import AsyncResult
 import markdown2
 
 from app.celery_app import celery_app
-
-from ..core.config import settings
-from ..db.base import get_db
-from ..db.crud import (
+from app.core.config import settings
+from app.db.base import get_db
+from app.db.crud import (
     get_conversion_by_hash_and_params as db_get_conversion_by_hash_and_params,
     update_conversion_access,
     count_pending_conversions,
 )
-from ..services.file_service import (
+from app.services.file_service import (
     save_upload_file,
     store_file_permanently,
     cleanup_temp_file,
 )
-from ..services.converter import convert_pdf_task
-from . import models
-from ..db import models as db_models
+from app.services.converter import convert_pdf_task
+from app.api.models import (
+    ConversionResponse,
+    AsyncTaskResponse,
+    QueueStatusResponse,
+    HealthResponse,
+)
+from app.db import models as db_models
 
 # Set up logging
-logger = logging.getLogger("pdf2md.api")
+logger = logging.getLogger("pdf2md.api.v1")
 
-templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
+templates_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "templates"
+)
 templates = Jinja2Templates(directory=templates_path)
 
 router = APIRouter()
@@ -98,17 +104,17 @@ async def read_root(request: Request):
     response_model=None,
     responses={
         200: {
-            "model": models.ConversionResponse,
+            "model": ConversionResponse,
             "description": "Cached result returned directly",
         },
         202: {
-            "model": models.AsyncTaskResponse,
+            "model": AsyncTaskResponse,
             "description": "Task successfully enqueued",
         },
         400: {"description": "Invalid input (e.g., not a PDF)"},
         413: {"description": "File too large"},
         500: {
-            "model": models.AsyncTaskResponse,
+            "model": AsyncTaskResponse,
             "description": "Failed to enqueue task",
         },
     },
@@ -201,7 +207,7 @@ async def convert_pdf_endpoint(
                         f"Error removing temporary file after memory cache hit {temp_file_path}: {rm_err}"
                     )
 
-            memory_cache_response = models.ConversionResponse(
+            memory_cache_response = ConversionResponse(
                 success=True,
                 message="Successfully retrieved cached conversion (memory/DB)",
                 markdown=cached_markdown,
@@ -262,7 +268,7 @@ async def convert_pdf_endpoint(
                         f"Error removing temporary file after cache hit {temp_file_path}: {rm_err}"
                     )
 
-            db_cache_response = models.ConversionResponse(
+            db_cache_response = ConversionResponse(
                 success=True,
                 message=f"Successfully retrieved cached conversion for {file.filename}",
                 markdown=cached_conversion.markdown_content,
@@ -294,7 +300,7 @@ async def convert_pdf_endpoint(
 
         logger.info(f"Task enqueued with ID: {task.id} for file {file.filename}")
 
-        enqueue_response = models.AsyncTaskResponse(
+        enqueue_response = AsyncTaskResponse(
             success=True,
             message=f"Conversion task for {file.filename} enqueued.",
             task_id=task.id,
@@ -332,7 +338,7 @@ async def convert_pdf_endpoint(
                 logger.error(
                     f"Error removing temporary file after general exception {temp_file_path}: {rm_err}"
                 )
-        error_response_payload = models.AsyncTaskResponse(
+        error_response_payload = AsyncTaskResponse(
             success=False,
             message="Failed to enqueue conversion task due to an internal error.",
             error=str(e),
@@ -349,12 +355,12 @@ async def convert_pdf_endpoint(
     response_model=None,
     responses={
         200: {
-            "model": models.ConversionResponse,
+            "model": ConversionResponse,
             "description": "Task completed successfully, result returned",
         },
         202: {"description": "Task is still pending or running"},
         404: {"description": "Task result not found after completion"},
-        500: {"model": models.ConversionResponse, "description": "Task failed"},
+        500: {"model": ConversionResponse, "description": "Task failed"},
     },
 )
 async def get_task_status(task_id: str, db: Session = Depends(get_db)):
@@ -402,7 +408,7 @@ async def get_task_status(task_id: str, db: Session = Depends(get_db)):
                             bool(db_conversion.force_ocr),
                             db_conversion.markdown_content,
                         )
-                        success_payload = models.ConversionResponse(
+                        success_payload = ConversionResponse(
                             success=True,
                             message="Conversion successful.",
                             markdown=db_conversion.markdown_content,
@@ -427,7 +433,7 @@ async def get_task_status(task_id: str, db: Session = Depends(get_db)):
                     logger.error(
                         f"Task {task_id} succeeded but file_hash missing in result data."
                     )
-                    missing_hash_payload = models.ConversionResponse(
+                    missing_hash_payload = ConversionResponse(
                         success=False,
                         message="Internal error retrieving conversion result.",
                         error="Missing file hash in task result.",
@@ -447,7 +453,7 @@ async def get_task_status(task_id: str, db: Session = Depends(get_db)):
                 logger.error(
                     f"Task {task_id} completed with status FAILURE: {error_info}"
                 )
-                internal_failure_payload = models.ConversionResponse(
+                internal_failure_payload = ConversionResponse(
                     success=False, message="Conversion failed.", error=error_info
                 )
                 return Response(
@@ -465,7 +471,7 @@ async def get_task_status(task_id: str, db: Session = Depends(get_db)):
             except Exception:
                 error_info = "Unknown task failure (could not retrieve info)"
             logger.error(f"Task {task_id} failed: {error_info}")
-            exception_failure_payload = models.ConversionResponse(
+            exception_failure_payload = ConversionResponse(
                 success=False, message="Conversion failed.", error=error_info
             )
             return Response(
@@ -477,13 +483,13 @@ async def get_task_status(task_id: str, db: Session = Depends(get_db)):
         return Response(status_code=status.HTTP_202_ACCEPTED)
 
 
-@router.get("/queue/status", response_model=models.QueueStatusResponse)
+@router.get("/queue/status", response_model=QueueStatusResponse)
 async def get_queue_status(db: Session = Depends(get_db)):
     pending_count = count_pending_conversions(db)
-    return models.QueueStatusResponse(pending_tasks=pending_count)
+    return QueueStatusResponse(pending_tasks=pending_count)
 
 
-@router.get("/health", response_model=models.HealthResponse)
+@router.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
     return {

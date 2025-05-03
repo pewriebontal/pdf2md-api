@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
-from .api.endpoints import router
+from .api.router import router as api_router 
 from .core.config import settings
 from .db.base import init_db
 
@@ -51,7 +51,7 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-app.include_router(router)
+app.include_router(api_router)
 
 
 static_dir = Path(settings.UPLOAD_PATH)
